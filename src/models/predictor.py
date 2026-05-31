@@ -13,8 +13,8 @@ Transformer Architecture:
 class PredictorNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-
+        pass
         
 
-    def forward(z, a):
+    def forward(self, z, a):
         pass

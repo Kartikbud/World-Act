@@ -16,5 +16,5 @@ class EncoderNetwork(nn.Module):
         super().__init__()
 
     
-    def forward(x):
+    def forward(self, x):
         pass

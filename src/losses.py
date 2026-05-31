@@ -10,7 +10,7 @@ the embedding space is. This is a very important term as it helps to prevent
 representation collapse of the latent space.
 """
 
-def sig_reg(Z):
+def sig_reg(Z): 
     pass
 
 
