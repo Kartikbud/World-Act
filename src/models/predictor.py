@@ -29,7 +29,9 @@ class PredictorNetwork(nn.Module):
             self.transformer_layers.append(TransformerBlock(d_model, 
                                            nheads, 
                                            d_action, 
-                                           dropout))
+                                           dropout,
+                                           True,
+                                           True))
         # learned positional embeddings
         self.position_emb = nn.Parameter(torch.randn(window, d_model))
 

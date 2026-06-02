@@ -1,4 +1,5 @@
 from torch import nn
+from vit_tiny import CustomVitTiny
 
 """
 This is the network definition for the encoder network which in the paper
@@ -14,7 +15,7 @@ was just ViT-Tiny which is a visual transformer with the following parameters:
 class EncoderNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-
+        
     
     def forward(self, x):
         pass
