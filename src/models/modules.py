@@ -8,19 +8,51 @@ more specifically the Attention Heads and MLPs that come together to
 make transformers
 """
 
-class Transformer(nn.Module):
-    def __init__(self):
+class TransformerBlock(nn.Module): # pre norm transformer implementation with adaptive layer norm
+    def __init__(self, 
+                d_model : int = 192,
+                nheads : int = 16,
+                d_action : int = 2):
         super().__init__()
-        pass
 
-    def forward(self, x):
-        pass
+        self.d_model = d_model
+        self.nheads = nheads
+        self.d_action = d_action
+        self.hidden_dim = 4 * self.d_model
+
+        self.W_LNparams = nn.Linear(in_features=d_action, out_features=4*d_model) # 2 sets of parameters for each norm
+        # initing the weights and bias to 0
+        self.W_LNparams.weight.data.zero_()
+        self.W_LNparams.bias.data.zero_()
+
+        self.norm = nn.LayerNorm(self.d_model, elementwise_affine=False)
+
+        self.attn_block = MultiHeadAttention(d_model=d_model,
+                                             nheads=nheads)
+        self.mlp = nn.Sequential(
+            nn.Linear(in_features=self.d_model, out_features=self.hidden_dim),
+            nn.GELU(),
+            nn.Linear(in_features=self.hidden_dim, out_features=self.d_model)
+        )                                        
+
+    def forward(self, z, a): # positional embeddings should come into this
+        # Note: can also add gates to make training more stable if need be
+        params = self.W_LNparams(a)
+        scale_one, shift_one, scale_two, shift_two = params.chunk(4, dim=-1) # splitting the tensor into 2 seperate tensors for each param
+
+        residual_one = self.attn_block((1 + scale_one) * self.norm(z) + shift_one)
+        z = z + residual_one
+
+        residual_two = self.mlp((1 + scale_two) * self.norm(z) + shift_two)
+        z = z + residual_two
+
+        return z
 
 
 # shape of the input embeddings: (B, N, d_model)
 class MultiHeadAttention(nn.Module): # implemented with causal masking
     def __init__(self, 
-                d_model: int = 192, 
+                d_model : int = 192, 
                 nheads : int = 16):
 
         super().__init__()
@@ -67,10 +99,9 @@ class MultiHeadAttention(nn.Module): # implemented with causal masking
 
         return output
 
-class MLP(nn.Module):
-    def __init__(self):
-        super().__init__()
-        pass
+dummy_mha = MultiHeadAttention(d_model = 192, nheads = 16)
+dummy_embedding = torch.ones((512, 3, 192))
+dummy_actions = torch.ones(512, 3, 2)
+dummy_transformer = TransformerBlock(d_model = 192, nheads = 16, d_action = 2)
 
-    def forward(x):
-        pass
+print(dummy_transformer(dummy_embedding, dummy_actions).shape)
