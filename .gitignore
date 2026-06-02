@@ -1,2 +1,4 @@
 myenv
 data
+.python-version
+src/models/__pycache__
