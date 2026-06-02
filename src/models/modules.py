@@ -12,13 +12,15 @@ class TransformerBlock(nn.Module): # pre norm transformer implementation with ad
     def __init__(self, 
                 d_model : int = 192,
                 nheads : int = 16,
-                d_action : int = 2):
+                d_action : int = 2,
+                dropout : float = 0.1):
         super().__init__()
 
         self.d_model = d_model
         self.nheads = nheads
         self.d_action = d_action
         self.hidden_dim = 4 * self.d_model
+        self.dropout = dropout
 
         self.W_LNparams = nn.Linear(in_features=d_action, out_features=4*d_model) # 2 sets of parameters for each norm
         # initing the weights and bias to 0
@@ -28,11 +30,14 @@ class TransformerBlock(nn.Module): # pre norm transformer implementation with ad
         self.norm = nn.LayerNorm(self.d_model, elementwise_affine=False)
 
         self.attn_block = MultiHeadAttention(d_model=d_model,
-                                             nheads=nheads)
+                                             nheads=nheads,
+                                             dropout=self.dropout)
         self.mlp = nn.Sequential(
             nn.Linear(in_features=self.d_model, out_features=self.hidden_dim),
             nn.GELU(),
-            nn.Linear(in_features=self.hidden_dim, out_features=self.d_model)
+            nn.Dropout(self.dropout),
+            nn.Linear(in_features=self.hidden_dim, out_features=self.d_model),
+            nn.Dropout(self.dropout)
         )                                        
 
     def forward(self, z, a): # positional embeddings should come into this
@@ -53,12 +58,16 @@ class TransformerBlock(nn.Module): # pre norm transformer implementation with ad
 class MultiHeadAttention(nn.Module): # implemented with causal masking
     def __init__(self, 
                 d_model : int = 192, 
-                nheads : int = 16):
+                nheads : int = 16,
+                dropout : float = 0.1):
 
         super().__init__()
         self.d_model = d_model
+        self.dropout = dropout
         self.d_k = self.d_model // nheads
         self.H = nheads
+
+        self.drop = nn.Dropout(p=self.dropout)
 
         # Q V K projection weights
         self.W_q = nn.Linear(in_features=d_model, out_features=d_model)
@@ -79,6 +88,7 @@ class MultiHeadAttention(nn.Module): # implemented with causal masking
         mask = torch.tril(torch.ones(N, N, device=Q.device)).bool() 
         masked_scores = scaled_scores.masked_fill(~mask, float("-inf"))
         weights = torch.softmax(masked_scores, dim=-1) # softmaxing to get weights
+        weights = self.drop(weights)
         outputs = weights @ V
 
         return outputs
@@ -96,12 +106,6 @@ class MultiHeadAttention(nn.Module): # implemented with causal masking
         attn_output =  attn_output.permute(0, 2, 1, 3).reshape(B, N, self.d_model) # concatenating the output across the different heads
 
         output = self.W_o(attn_output)
+        output = self.drop(output)
 
         return output
-
-dummy_mha = MultiHeadAttention(d_model = 192, nheads = 16)
-dummy_embedding = torch.ones((512, 3, 192))
-dummy_actions = torch.ones(512, 3, 2)
-dummy_transformer = TransformerBlock(d_model = 192, nheads = 16, d_action = 2)
-
-print(dummy_transformer(dummy_embedding, dummy_actions).shape)
