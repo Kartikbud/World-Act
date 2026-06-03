@@ -12,7 +12,7 @@ class TransformerBlock(nn.Module): # pre norm transformer implementation with ad
     def __init__(self, 
                 d_model : int = 192,
                 nheads : int = 16,
-                d_action : int = 2,
+                d_action : int = None,
                 dropout : float = 0.1,
                 causal_masking : bool = True,
                 adaptive : bool = True):

@@ -55,8 +55,10 @@ class PredictorNetwork(nn.Module):
 
         return z
 
-dummy_emb = torch.ones((512, 3, 192))
-dummy_act = torch.ones((512, 3, 2))
-pred = PredictorNetwork()
+# TESTING
 
-print(pred(dummy_emb, dummy_act).shape)
+# dummy_emb = torch.ones((512, 3, 192))
+# dummy_act = torch.ones((512, 3, 2))
+# pred = PredictorNetwork()
+
+# print(pred(dummy_emb, dummy_act).shape)
