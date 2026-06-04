@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 import numpy as np
 
 """
@@ -10,7 +11,9 @@ the embedding space is. This is a very important term as it helps to prevent
 representation collapse of the latent space.
 """
 
-def sig_reg(Z): 
-    pass
-
-
+class SIGReg(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, Z):
+        pass

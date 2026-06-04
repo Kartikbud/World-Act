@@ -54,7 +54,7 @@ class CustomVitTiny(nn.Module):
            emb = layer(emb)
         
         emb = emb.reshape(B, N, self.npatches + 1, self.d_model)
-        emb = emb[:, :, 0, :]
+        emb = emb[:, :, 0, :] # shape : (512, 3, 192), this is what the predictor expects as the input
 
         return emb
 
