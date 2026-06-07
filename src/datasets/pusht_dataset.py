@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+from torch.linalg import inv_ex
 from torch.utils.data import Dataset
 from pathlib import Path
 import torchvision
@@ -63,11 +64,11 @@ class PushTDataset(Dataset):
 		sample = self.frame_samples[idx]
 		ep_num, ep_path, frames = sample
 		input_frames = frames[:-1]
-		target_frame = frames[-1]
+		target_frames = frames[1:]
 
 		decoder = VideoDecoder(ep_path)
 		input_window_tensor = torch.stack([decoder[i] for i in input_frames])
-		target_state_tensor = decoder[target_frame]
+		target_state_tensor = torch.stack([decoder[i] for i in target_frames])
 		
 		ep_action = self.action_tensor[ep_num]
 		action_window = []
@@ -89,4 +90,11 @@ in_window, action, target = test_dataset.__getitem__(3)
 print(in_window.shape)
 print(action.shape)
 print(target.shape)
+
+print("actual tensors")
+
+print(in_window)
+print(target)
+
+
 
