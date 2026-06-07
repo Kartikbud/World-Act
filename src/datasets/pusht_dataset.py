@@ -14,7 +14,7 @@ This script is for processing the data from the raw pusht files:
 - to make inference more efficient, frame skips are utilized so instead of predicting the next frame
   you predict the Nth next frame
 - if frame skip was 2 this would make the data pairs:
-  - x: (frame0, a0 + a1 + a2), y: frame3
+  - x: (frame0, a0 + a1), y: frame3
 """
 
 class PushTDataset(Dataset):
@@ -26,6 +26,8 @@ class PushTDataset(Dataset):
 		super().__init__()
 		dir_var = "val" if val else "train"
 
+		self.frame_skip = frame_skip
+		self.window = window
 		self.action_tensor = torch.load(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "rel_actions.pth")
 		# shape of action tensor: [18685, 246, 2] : [episodes, action per frame + padding, ]
 		obs_dir = Path(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "obses")
@@ -51,7 +53,7 @@ class PushTDataset(Dataset):
 		(3, ep3 Path, [5, 10, 15, 20])]
 		"""
 		
-		self.total_len = sum(len(ep_batch) for ep_batch in self.frame_samples)
+		self.total_len = len(self.frame_samples)
 		
 	
 	def __len__(self):
@@ -60,18 +62,31 @@ class PushTDataset(Dataset):
 	def __getitem__(self, idx):
 		sample = self.frame_samples[idx]
 		ep_num, ep_path, frames = sample
-		
+		input_frames = frames[:-1]
+		target_frame = frames[-1]
+
 		decoder = VideoDecoder(ep_path)
+		input_window_tensor = torch.stack([decoder[i] for i in input_frames])
+		target_state_tensor = decoder[target_frame]
+		
 		ep_action = self.action_tensor[ep_num]
+		action_window = []
+		for i in range(len(frames) - 1):
+			action = ep_action[frames[i]:frames[i + 1]].sum(dim=0)
+			action_window.append(action)
+
+		action_window_tensor = torch.stack(action_window, dim=0)
+
+		return input_window_tensor, action_window_tensor, target_state_tensor
 
 		
-
 data_dir = Path("/Users/kartikbudihal/leworld/data")
 
-test_vid = VideoDecoder(data_dir / "pusht_noise" / "pusht_noise" / "train" / "obses" / "episode_1002.mp4")
+test_dataset = PushTDataset(data_dir, 5, 3)
 
-print(test_vid[:].shape[0])
-print(len(test_vid))
+in_window, action, target = test_dataset.__getitem__(3)
 
-action_tensor = torch.load(data_dir / "pusht_noise" / "pusht_noise" / "train" / "rel_actions.pth")
+print(in_window.shape)
+print(action.shape)
+print(target.shape)
 
