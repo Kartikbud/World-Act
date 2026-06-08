@@ -18,6 +18,9 @@ def train(device,
           window_size : int = 3,
           embedding_dim : int = 192):
 
+    
+    torch.manual_seed(seed)
+
     # loading and setting up the data 
     train_dataset = PushTDataset(data_dir=data_dir)
 
@@ -30,19 +33,17 @@ def train(device,
 
     val_dataloader = DataLoader(dataset=val_dataset, 
                                      batch_size=batch_size, 
-                                     shuffle=True)
+                                     shuffle=False)
 
     predictor = PredictorNetwork().to(device)
     encoder = EncoderNetwork().to(device)
 
     print(f"networks are on device: {device}")
 
-    sig_reg = SIGReg()
-    pred_loss = nn.MSELoss()
+    sig_reg = SIGReg().to(device)
+    pred_loss_fn = nn.MSELoss()
 
-    torch.manual_seed(seed)
-
-    optimizer = torch.optim.AdamW(params=list(predictor.parameters()) + list(encoder.parameters()), lr=lr)
+    optimizer = torch.optim.AdamW(params=list(predictor.parameters()) + list(encoder.parameters()), lr=lr, betas=(0.9, 0.95), weight_decay=0.05)
 
     for epoch in tqdm(range(epochs)):
         print(f"Epoch; {epoch}\n------------")
@@ -50,19 +51,22 @@ def train(device,
         # train loop
         train_loss = 0 # running loss sum to be averaged after each batch
 
+        encoder.train()
+        predictor.train()
         for batch, (X, A, Y) in enumerate(train_dataloader):
-            encoder.train()
-            predictor.train()
+            X = X.to(device)
+            A = A.to(device)
+            Y = Y.to(device)
 
             embeddings = encoder(X)
             pred_embeddings = predictor(embeddings, A)
             target_embeddings = encoder(Y)
 
-            pred_loss = pred_loss(pred_embeddings, target_embeddings)
+            pred_loss = pred_loss_fn(pred_embeddings, target_embeddings)
             reg_loss = sig_reg.forward(embeddings.transpose(0, 1))
 
             loss = pred_loss + lambd * reg_loss
-            train_loss += loss
+            train_loss += loss.item()
 
             optimizer.zero_grad()
 
@@ -80,15 +84,19 @@ def train(device,
 
         with torch.inference_mode():
             for (X, A, Y) in val_dataloader:
+                X = X.to(device)
+                A = A.to(device)
+                Y = Y.to(device)
+                
                 embeddings = encoder(X)
                 pred_embeddings = predictor(embeddings, A)
                 target_embeddings = encoder(Y)
 
-                pred_loss = pred_loss(pred_embeddings, target_embeddings)
+                pred_loss = pred_loss_fn(pred_embeddings, target_embeddings)
                 reg_loss = sig_reg.forward(embeddings.transpose(0, 1))
 
                 loss = pred_loss + lambd * reg_loss
-                val_loss += loss
+                val_loss += loss.item()
             
             val_loss /= len(val_dataloader)
 
