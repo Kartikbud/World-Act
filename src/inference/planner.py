@@ -10,24 +10,22 @@ to the goal state.
 
 class Planner():
     def __init__(self,
-                 zi, # initial state
-                 zg, # goal state
-                 f : nn.Module, # world model
+                 enc : nn.Module, # encoder model
+                 pred : nn.Module, # predictor model
                  H : int, # planning horizon
                  N : int, # number of samples per iteration
                  K : int, # number of elites per iteration
                  T : int): # number of iterations
         
-        self.zi = zi
-        self.zg = zg
-        self.f = f
+        self.enc = enc
+        self.pred = pred
         self.H = H
         self.N = N
         self.K = K
         self.T = T
 
-    def cost(self):
+    def cost(self, zx, zg):
         pass
 
-    def CEM(self):
+    def CEM(self, zi, zg):
         pass

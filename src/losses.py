@@ -38,10 +38,10 @@ class SIGReg(nn.Module):
     
     def forward(self, Z): # Z : (N, B, D) or (N+1, B, D) if target embeddins is being included
         A = torch.randn(Z.size(-1), self.num_proj, device=Z.device) # tensor of random directions that the embeddings will be projected onto
-        A = A.div_(A.norm(p=0.2, dim=0)) # normalizing the tensor to be unit vectors
+        A = A.div_(A.norm(p=2, dim=0)) # normalizing the tensor to be unit vectors
         
         # computing the epps-pulley stat
-        x_t = (Z @ A).unsqueeze(-1) * self.to
+        x_t = (Z @ A).unsqueeze(-1) * self.t
         err = (x_t.cos().mean(-3) - self.phi).square() + x_t.sin().mean(-3).square()
         stat = (err @ self.weights) * Z.size(-2)
 

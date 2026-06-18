@@ -80,8 +80,9 @@ class PushTDataset(Dataset):
 
 		return input_window_tensor, action_window_tensor, target_state_tensor
 
-		
-data_dir = Path("/Users/kartikbudihal/leworld/data")
+project_dir = Path(__file__).resolve().parent.parent.parent
+
+data_dir = project_dir / "data"
 
 test_dataset = PushTDataset(data_dir, 5, 3)
 
