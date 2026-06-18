@@ -1,4 +1,3 @@
-from math import log
 import torch
 from torch import nn
 from architectures.encoder import EncoderNetwork
@@ -188,7 +187,10 @@ if __name__=="__main__":
     log_dir = PROJECT_DIR / "logs" 
     save_dir = PROJECT_DIR / "models"
 
-    results = train(data_dir=data_dir,
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    results = train(device=device,
+                    data_dir=data_dir,
                     log_dir=log_dir,
                     save_dir=save_dir)
 
