@@ -36,9 +36,11 @@ class PushTDataset(Dataset):
 		# data will be returned like this frames : [window of inputs frames, next frame], [window of actions]
 		# only valid batches of frames will be returned, not the 
 		self.frame_samples = []
+		self.raw_vid_tensors = []
 		for idx, ep in enumerate(video_dirs):
 			decoder = VideoDecoder(ep)
 			ep_len = len(decoder)
+			self.raw_vid_tensors.append([decoder[i] for i in range(ep_len)])
 			for i in range((window - 1)*frame_skip, ep_len - 1 - frame_skip):
 				batch = []
 				for j in reversed(range(window)):
@@ -66,9 +68,8 @@ class PushTDataset(Dataset):
 		input_frames = frames[:-1]
 		target_frames = frames[1:]
 
-		decoder = VideoDecoder(ep_path)
-		input_window_tensor = torch.stack([decoder[i] for i in input_frames]).float() / 255.0
-		target_state_tensor = torch.stack([decoder[i] for i in target_frames]).float() / 255.0
+		input_window_tensor = torch.stack([self.raw_vid_tensors[ep_num][i] for i in input_frames]).float() / 255.0
+		target_state_tensor = torch.stack([self.raw_vid_tensors[ep_num][i] for i in target_frames]).float() / 255.0
 		
 		ep_action = self.action_tensor[ep_num]
 		action_window = []
