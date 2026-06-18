@@ -67,8 +67,8 @@ class PushTDataset(Dataset):
 		target_frames = frames[1:]
 
 		decoder = VideoDecoder(ep_path)
-		input_window_tensor = torch.stack([decoder[i] for i in input_frames])
-		target_state_tensor = torch.stack([decoder[i] for i in target_frames])
+		input_window_tensor = torch.stack([decoder[i] for i in input_frames]).float() / 255.0
+		target_state_tensor = torch.stack([decoder[i] for i in target_frames]).float() / 255.0
 		
 		ep_action = self.action_tensor[ep_num]
 		action_window = []
@@ -76,7 +76,7 @@ class PushTDataset(Dataset):
 			action = ep_action[frames[i]:frames[i + 1]].sum(dim=0)
 			action_window.append(action)
 
-		action_window_tensor = torch.stack(action_window, dim=0)
+		action_window_tensor = torch.stack(action_window, dim=0).float()
 
 		return input_window_tensor, action_window_tensor, target_state_tensor
 
