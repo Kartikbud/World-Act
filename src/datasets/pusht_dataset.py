@@ -1,10 +1,13 @@
 import torch
 from torch import Tensor
 from torch.linalg import inv_ex
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from pathlib import Path
+from functools import lru_cache
 import torchvision
 from torchcodec.decoders import VideoDecoder
+
+import time
 
 """
 This script is for processing the data from the raw pusht files:
@@ -32,15 +35,13 @@ class PushTDataset(Dataset):
 		self.action_tensor = torch.load(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "rel_actions.pth")
 		# shape of action tensor: [18685, 246, 2] : [episodes, action per frame + padding, ]
 		obs_dir = Path(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "obses")
-		video_dirs = [ep for ep in obs_dir.iterdir()] # list of Path objects for each vid 
+		video_dirs = [ep for ep in sorted(obs_dir.iterdir())] # list of Path objects for each vid 
 		# data will be returned like this frames : [window of inputs frames, next frame], [window of actions]
 		# only valid batches of frames will be returned, not the 
 		self.frame_samples = []
-		self.raw_vid_tensors = []
 		for idx, ep in enumerate(video_dirs):
-			decoder = VideoDecoder(ep)
+			decoder = self._decoder(ep)
 			ep_len = len(decoder)
-			self.raw_vid_tensors.append([decoder[i] for i in range(ep_len)])
 			for i in range((window - 1)*frame_skip, ep_len - 1 - frame_skip):
 				batch = []
 				for j in reversed(range(window)):
@@ -57,6 +58,10 @@ class PushTDataset(Dataset):
 		"""
 		
 		self.total_len = len(self.frame_samples)
+
+	@lru_cache(maxsize=32)
+	def _decoder(self, ep_path):
+		return VideoDecoder(ep_path)
 		
 	
 	def __len__(self):
@@ -68,8 +73,9 @@ class PushTDataset(Dataset):
 		input_frames = frames[:-1]
 		target_frames = frames[1:]
 
-		input_window_tensor = torch.stack([self.raw_vid_tensors[ep_num][i] for i in input_frames]).float() / 255.0
-		target_state_tensor = torch.stack([self.raw_vid_tensors[ep_num][i] for i in target_frames]).float() / 255.0
+		decoder = self._decoder(ep_path)
+		input_window_tensor = torch.stack([decoder[i] for i in input_frames]).float() / 255.0
+		target_state_tensor = torch.stack([decoder[i] for i in target_frames]).float() / 255.0
 		
 		ep_action = self.action_tensor[ep_num]
 		action_window = []
@@ -80,23 +86,3 @@ class PushTDataset(Dataset):
 		action_window_tensor = torch.stack(action_window, dim=0).float()
 
 		return input_window_tensor, action_window_tensor, target_state_tensor
-
-project_dir = Path(__file__).resolve().parent.parent.parent
-
-data_dir = project_dir / "data"
-
-test_dataset = PushTDataset(data_dir, 5, 3)
-
-in_window, action, target = test_dataset.__getitem__(3)
-
-print(in_window.shape)
-print(action.shape)
-print(target.shape)
-
-print("actual tensors")
-
-print(in_window)
-print(target)
-
-
-

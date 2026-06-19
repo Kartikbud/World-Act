@@ -22,6 +22,7 @@ def train(device,
           lambd : float = 0.1,
           epochs : int = 200,
           batch_size : int = 512,
+          num_workers : int = 1,
           window_size : int = 3,
           embedding_dim : int = 192,
           action_dim : int = 2,
@@ -54,11 +55,13 @@ def train(device,
 
     train_dataloader = DataLoader(dataset=train_dataset, 
                                        batch_size=batch_size, 
-                                       shuffle=True)
+                                       shuffle=True,
+                                       num_workers=num_workers)
 
     val_dataloader = DataLoader(dataset=val_dataset, 
                                      batch_size=batch_size, 
-                                     shuffle=False)
+                                     shuffle=False,
+                                     num_workers=num_workers)
 
     # network definitions
     predictor = PredictorNetwork(d_model=embedding_dim,
