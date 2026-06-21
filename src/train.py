@@ -20,9 +20,11 @@ def train(device,
           lr : float = 3e-4,
           seed : int = 42,
           lambd : float = 0.1,
-          epochs : int = 200,
-          batch_size : int = 512,
+          epochs : int = 10,
+          batch_size : int = 128,
           num_workers : int = 1,
+          persistent_workers : bool = True,
+          pin_memory : bool = True,
           window_size : int = 3,
           embedding_dim : int = 192,
           action_dim : int = 2,
@@ -56,12 +58,16 @@ def train(device,
     train_dataloader = DataLoader(dataset=train_dataset, 
                                        batch_size=batch_size, 
                                        shuffle=True,
-                                       num_workers=num_workers)
+                                       num_workers=num_workers,
+                                       persistent_workers=persistent_workers,
+                                       pin_memory=pin_memory)
 
     val_dataloader = DataLoader(dataset=val_dataset, 
                                      batch_size=batch_size, 
                                      shuffle=False,
-                                     num_workers=num_workers)
+                                     num_workers=num_workers,
+                                     persistent_workers=persistent_workers,
+                                     pin_memory=pin_memory)
 
     # network definitions
     predictor = PredictorNetwork(d_model=embedding_dim,
