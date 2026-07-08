@@ -141,7 +141,7 @@ def train(device,
             A = A.to(device, non_blocking=non_blocking)
             Y = Y.to(device, non_blocking=non_blocking)
 
-            with autocast_ctx:
+            with autocast_ctx: # placing the forward passes into the AMP for speedups
                 embeddings = encoder(X)
                 pred_embeddings = predictor(embeddings, A)
                 target_embeddings = encoder(Y)
@@ -224,6 +224,12 @@ if __name__ == "__main__":
         default=PROJECT_DIR / "configs" / "default.yaml",
         help="Path to the training config YAML file.",
     )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        required=True,
+        help="Name of the run. Checkpoints save to <save_dir>/<run_name>/.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -236,7 +242,7 @@ if __name__ == "__main__":
 
     data_dir = PROJECT_DIR / paths["data_dir"]
     log_dir = PROJECT_DIR / paths["log_dir"]
-    save_dir = PROJECT_DIR / paths["save_dir"]
+    save_dir = PROJECT_DIR / paths["save_dir"] / args.run_name
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
