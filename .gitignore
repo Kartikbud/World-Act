@@ -3,3 +3,4 @@ data
 .python-version
 src/models/__pycache__
 src/datasets/scan_corrupt_episodes.py
+models/run1/
