@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from vit_tiny import CustomVitTiny
+from architectures.vit_tiny import CustomVitTiny
 
 """
 This is the network definition for the encoder network which in the paper

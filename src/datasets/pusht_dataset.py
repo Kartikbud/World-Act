@@ -1,9 +1,11 @@
+import pickle
+import re
+
 import torch
 from torch import Tensor
 from torch.linalg import inv_ex
 from torch.utils.data import DataLoader, Dataset
 from pathlib import Path
-from functools import lru_cache
 import torchvision
 from torchcodec.decoders import VideoDecoder
 
@@ -21,6 +23,11 @@ This script is for processing the data from the raw pusht files:
   - x: (frame0, a0 + a1), y: frame3
 """
 
+def _episode_number(path: Path) -> int:
+	# Must match seq_lengths / rel_actions order (numeric), not lexicographic
+	# string sort (episode_1000.mp4 before episode_101.mp4).
+	return int(re.search(r"(\d+)", path.stem).group(1))
+
 class PushTDataset(Dataset):
 	def __init__(self,
 				 data_dir : Path,
@@ -34,14 +41,19 @@ class PushTDataset(Dataset):
 		self.window = window
 		self.action_tensor = torch.load(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "rel_actions.pth")
 		# shape of action tensor: [18685, 246, 2] : [episodes, action per frame + padding, ]
-		obs_dir = Path(data_dir / "pusht_noise" / "pusht_noise" / dir_var / "obses")
-		video_dirs = [ep for ep in sorted(obs_dir.iterdir())] # list of Path objects for each vid 
+		split_dir = data_dir / "pusht_noise" / "pusht_noise" / dir_var
+		obs_dir = Path(split_dir / "obses")
+		video_dirs = sorted(obs_dir.iterdir(), key=_episode_number) # list of Path objects for each vid
+		with open(split_dir / "seq_lengths.pkl", "rb") as f:
+			seq_lengths = pickle.load(f)
+		# Lazy per-worker cache; must stay empty in the parent so forked workers
+		# do not inherit live VideoDecoder / FFmpeg state.
+		self._decoders = {}
 		# data will be returned like this frames : [window of inputs frames, next frame], [window of actions]
 		# only valid batches of frames will be returned, not the 
 		self.frame_samples = []
 		for idx, ep in enumerate(video_dirs):
-			decoder = self._decoder(ep)
-			ep_len = len(decoder)
+			ep_len = int(seq_lengths[idx])
 			for i in range((window - 1)*frame_skip, ep_len - 1 - frame_skip):
 				batch = []
 				for j in reversed(range(window)):
@@ -59,9 +71,13 @@ class PushTDataset(Dataset):
 		
 		self.total_len = len(self.frame_samples)
 
-	@lru_cache(maxsize=32)
 	def _decoder(self, ep_path):
-		return VideoDecoder(ep_path)
+		ep_path = str(ep_path)
+		decoder = self._decoders.get(ep_path)
+		if decoder is None:
+			decoder = VideoDecoder(ep_path)
+			self._decoders[ep_path] = decoder
+		return decoder
 		
 	
 	def __len__(self):

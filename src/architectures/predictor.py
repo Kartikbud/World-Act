@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from modules import TransformerBlock
+from architectures.modules import TransformerBlock
 
 
 """
