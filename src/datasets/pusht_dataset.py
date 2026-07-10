@@ -1,5 +1,6 @@
 import pickle
 import re
+from collections import OrderedDict
 
 import torch
 from torch import Tensor
@@ -46,9 +47,11 @@ class PushTDataset(Dataset):
 		video_dirs = sorted(obs_dir.iterdir(), key=_episode_number) # list of Path objects for each vid
 		with open(split_dir / "seq_lengths.pkl", "rb") as f:
 			seq_lengths = pickle.load(f)
-		# Lazy per-worker cache; must stay empty in the parent so forked workers
-		# do not inherit live VideoDecoder / FFmpeg state.
-		self._decoders = {}
+		# Lazy per-worker LRU; must stay empty in the parent so forked workers
+		# do not inherit live VideoDecoder / FFmpeg state. Cap size so shuffled
+		# training does not keep thousands of open decoders in RAM.
+		self._decoders = OrderedDict()
+		self._decoder_cache_size = 32
 		# data will be returned like this frames : [window of inputs frames, next frame], [window of actions]
 		# only valid batches of frames will be returned, not the 
 		self.frame_samples = []
@@ -74,9 +77,13 @@ class PushTDataset(Dataset):
 	def _decoder(self, ep_path):
 		ep_path = str(ep_path)
 		decoder = self._decoders.get(ep_path)
-		if decoder is None:
-			decoder = VideoDecoder(ep_path)
-			self._decoders[ep_path] = decoder
+		if decoder is not None:
+			self._decoders.move_to_end(ep_path)
+			return decoder
+		decoder = VideoDecoder(ep_path)
+		self._decoders[ep_path] = decoder
+		if len(self._decoders) > self._decoder_cache_size:
+			self._decoders.popitem(last=False)
 		return decoder
 		
 	
