@@ -37,3 +37,21 @@ cd mimicgen
 pip install -e .
 cd ..
 ```
+
+### roboverse
+
+Vendored under `./roboverse` (includes a small gym 0.25 compatibility fix).
+
+```bash
+conda install -c conda-forge pybullet
+pip install "gym==0.25.2"
+pip install -e ./roboverse
+```
+
+Smoke test:
+
+```bash
+python scripts/scripted_collect.py -n 1 -t 30 -e Widow250DoubleDrawerOpenNeutral-v0 -pl drawer_open_transfer -a drawer_opened_success --noise=0.1 --gui
+```
+
+Run that from `./roboverse`.

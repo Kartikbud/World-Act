@@ -4,3 +4,5 @@ data
 src/models/__pycache__
 src/datasets/scan_corrupt_episodes.py
 models/run1/
+roboverse/roboverse.egg-info/
+roboverse/data/
