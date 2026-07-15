@@ -12,6 +12,7 @@ was just ViT-Tiny which is a visual transformer with the following parameters:
     - this projection layer is a single layer with batch normalization to undo the
       affects of the layernorm at the end
 """
+# right now the image size is defaulted to 224x224
 
 class EncoderNetwork(nn.Module):
     def __init__(self,
