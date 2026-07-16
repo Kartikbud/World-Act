@@ -1,5 +1,4 @@
 import re
-from functools import lru_cache
 from pathlib import Path
 
 import h5py
@@ -26,7 +25,6 @@ Train vs val is selected via the HDF5 mask group (`mask/train`, `mask/valid`).
 
 def _demo_number(name: str) -> int:
 	return int(re.search(r"(\d+)", name).group(1))
-
 
 def _decode_demo_name(raw) -> str:
 	if isinstance(raw, bytes):
@@ -82,21 +80,17 @@ class RobotPrimaryDataset(Dataset):
 
 		self.total_len = len(self.frame_samples)
 
-	@lru_cache(maxsize=1)
-	def _h5(self):
-		return h5py.File(self.h5_path, "r")
-
 	def __len__(self):
 		return self.total_len
 
-	def _load_images(self, ep_name, frame_idx, cam_key):
-		dset = self._h5()[f"data/{ep_name}/obs/{cam_key}"]
+	def _load_images(self, f, ep_name, frame_idx, cam_key):
+		dset = f[f"data/{ep_name}/obs/{cam_key}"]
 		# HDF5 stores (T, H, W, C) uint8 → (W_frames, C, H, W) float
 		imgs = torch.from_numpy(dset[frame_idx]).float() / 255.0
 		return imgs.permute(0, 3, 1, 2).contiguous()
 
-	def _load_state(self, ep_name, frame_idx):
-		obs = self._h5()[f"data/{ep_name}/obs"]
+	def _load_state(self, f, ep_name, frame_idx):
+		obs = f[f"data/{ep_name}/obs"]
 		pos = torch.from_numpy(obs["robot0_eef_pos"][frame_idx]).float()
 		quat = torch.from_numpy(obs["robot0_eef_quat"][frame_idx]).float()
 		grip = torch.from_numpy(obs["robot0_gripper_qpos"][frame_idx]).float()
@@ -107,22 +101,21 @@ class RobotPrimaryDataset(Dataset):
 		input_frames = frames[:-1]
 		target_frames = frames[1:]
 
-		above_in = self._load_images(ep_name, input_frames, "agentview_image")
-		wrist_in = self._load_images(ep_name, input_frames, "robot0_eye_in_hand_image")
-		state_in = self._load_state(ep_name, input_frames)
+		with h5py.File(self.h5_path, "r") as f:
+			above_in = self._load_images(f, ep_name, input_frames, "agentview_image")
+			wrist_in = self._load_images(f, ep_name, input_frames, "robot0_eye_in_hand_image")
+			state_in = self._load_state(f, ep_name, input_frames)
 
-		above_tgt = self._load_images(ep_name, target_frames, "agentview_image")
-		wrist_tgt = self._load_images(ep_name, target_frames, "robot0_eye_in_hand_image")
-		state_tgt = self._load_state(ep_name, target_frames)
+			above_tgt = self._load_images(f, ep_name, target_frames, "agentview_image")
+			wrist_tgt = self._load_images(f, ep_name, target_frames, "robot0_eye_in_hand_image")
+			state_tgt = self._load_state(f, ep_name, target_frames)
 
-		ep_action = torch.from_numpy(
-			self._h5()[f"data/{ep_name}/actions"][:]
-		).float()
-		action_window = []
-		for i in range(len(frames) - 1):
-			action = ep_action[frames[i]:frames[i + 1]].sum(dim=0)
-			action_window.append(action)
-		action_window_tensor = torch.stack(action_window, dim=0)
+			ep_action = torch.from_numpy(f[f"data/{ep_name}/actions"][:]).float()
+			action_window = []
+			for i in range(len(frames) - 1):
+				action = ep_action[frames[i]:frames[i + 1]].sum(dim=0)
+				action_window.append(action)
+			action_window_tensor = torch.stack(action_window, dim=0)
 
 		return (
 			above_in,
