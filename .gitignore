@@ -1,8 +1,21 @@
 myenv
-data
 .python-version
 src/models/__pycache__
 src/datasets/scan_corrupt_episodes.py
 models/run1/
 roboverse/roboverse.egg-info/
 roboverse/data/
+
+# Ignore dataset contents, but keep empty robot data folders in the repo.
+data/*
+!data/robot/
+data/robot/*
+!data/robot/processed/
+!data/robot/raw_demo/
+!data/robot/mimicgen/
+data/robot/processed/**
+!data/robot/processed/.gitkeep
+data/robot/raw_demo/**
+!data/robot/raw_demo/.gitkeep
+data/robot/mimicgen/**
+!data/robot/mimicgen/.gitkeep

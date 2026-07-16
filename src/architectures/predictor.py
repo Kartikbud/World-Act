@@ -1,5 +1,13 @@
+import sys
+from pathlib import Path
+
 from torch import nn
 import torch
+
+SRC_DIR = Path(__file__).resolve().parents[1]
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 from architectures.modules import TransformerBlock
 
 
@@ -62,3 +70,8 @@ class PredictorNetwork(nn.Module):
 # pred = PredictorNetwork()
 
 # print(pred(dummy_emb, dummy_act).shape)
+
+if __name__ == "__main__":
+    dummy = PredictorNetwork()
+    total_params = sum(p.numel() for p in dummy.parameters())
+    print(total_params)

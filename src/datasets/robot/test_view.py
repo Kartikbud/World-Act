@@ -1,10 +1,14 @@
 import robosuite as suite
 import imageio
+from pathlib import Path
 
 """
 This is just a script to help me visualize each of the camera views for
-the Lift Envrironment.
+the Stack Environment.
 """
+
+OUT_DIR = Path(__file__).resolve().parent / "views"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 cameras = [
     "frontview",
@@ -16,7 +20,7 @@ cameras = [
 ]
 
 env = suite.make(
-    env_name="Lift",
+    env_name="Stack",
     robots="Panda",
     has_renderer=False,
     has_offscreen_renderer=True,
@@ -32,7 +36,8 @@ for cam in cameras:
     img = obs[f"{cam}_image"]
     if img.dtype != "uint8":
         img = (img * 255).astype("uint8") if img.max() <= 1.0 else img.astype("uint8")
-    imageio.imwrite(f"{cam}.png", img)
-    print(f"wrote {cam}.png")
+    path = OUT_DIR / f"{cam}.png"
+    imageio.imwrite(path, img)
+    print(f"wrote {path}")
 
 env.close()
