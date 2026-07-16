@@ -1,0 +1,9 @@
+[submodule "robosuite"]
+	path = robosuite
+	url = https://github.com/ARISE-Initiative/robosuite.git
+[submodule "robomimic"]
+	path = robomimic
+	url = https://github.com/ARISE-Initiative/robomimic.git
+[submodule "mimicgen"]
+	path = mimicgen
+	url = https://github.com/NVlabs/mimicgen.git

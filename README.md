@@ -1,4 +1,30 @@
-# leworld
+# World-Act
+
+**Note:** Human demos have already been collected and expanded with MimicGen. A sped-up preview of the generated data is in [`data_playback.mp4`](data_playback.mp4).
+
+## Dataset collection
+
+Pipeline for the robosuite **Stack** task (Panda + OSC_POSE), ending in a MimicGen-augmented training set under `data/robot/mimicgen/`.
+
+1. **Teleop collection** — `src/datasets/robot/collect_human_data.py`  
+   Keyboard demos of Stack. Successful, approved episodes are saved as per-demo HDF5s in `data/robot/raw_demo/`.
+
+2. **Process demos** — `src/datasets/robot/process_demos.py`  
+   Merges the raw demos and runs robomimic’s `convert_robosuite` conversion → `data/robot/processed/demo.hdf5` (with train/valid masks).
+
+3. **MimicGen generation** — `src/datasets/robot/generate_dataset.py`  
+   Annotates the processed source for MimicGen (`MG_Stack`), writes a Stack config, and generates ~1000 successful demos with `agentview` + `robot0_eye_in_hand` cameras. Failed demos/playback are dropped and the output is flattened into `data/robot/mimicgen/` (including a 90/10 train/valid mask).
+
+4. **Training loader** — `src/datasets/robot/primary_dataset.py`  
+   PyTorch dataset over `data/robot/mimicgen/demo.hdf5` (windowed frames, frame skip, proprio, actions).
+
+Example:
+
+```bash
+python src/datasets/robot/collect_human_data.py
+python src/datasets/robot/process_demos.py
+python src/datasets/robot/generate_dataset.py 1000
+```
 
 ## Installation
 
@@ -8,50 +34,28 @@ conda activate lewm
 pip install -r requirements.txt
 ```
 
-### robosuite (MimicGen-compatible)
+`robosuite`, `robomimic`, and `mimicgen` are git submodules (pinned commits). After cloning this repo:
 
 ```bash
-git clone https://github.com/ARISE-Initiative/robosuite.git
+git submodule update --init --recursive
+```
+
+Then install them editable from the local checkouts (no need to re-clone):
+
+```bash
+# robosuite (MimicGen-compatible pin)
 cd robosuite
-git checkout b9d8d3de5e3dfd1724f4a0e6555246c460407daa
 pip install -e .
 pip install mujoco==2.3.2
 cd ..
-```
 
-### robomimic
-
-```bash
-git clone https://github.com/ARISE-Initiative/robomimic.git
+# robomimic
 cd robomimic
-git checkout d0b37cf214bd24fb590d182edb6384333f67b661
 CMAKE_POLICY_VERSION_MINIMUM=3.5 pip install -e .
 cd ..
-```
 
-### mimicgen
-
-```bash
-git clone https://github.com/NVlabs/mimicgen.git
+# mimicgen
 cd mimicgen
 pip install -e .
 cd ..
 ```
-
-### roboverse
-
-Vendored under `./roboverse` (includes a small gym 0.25 compatibility fix).
-
-```bash
-conda install -c conda-forge pybullet
-pip install "gym==0.25.2"
-pip install -e ./roboverse
-```
-
-Smoke test:
-
-```bash
-python scripts/scripted_collect.py -n 1 -t 30 -e Widow250DoubleDrawerOpenNeutral-v0 -pl drawer_open_transfer -a drawer_opened_success --noise=0.1 --gui
-```
-
-Run that from `./roboverse`.
