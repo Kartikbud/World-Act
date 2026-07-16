@@ -14,8 +14,8 @@ from architectures.encoder import EncoderNetwork
 """
 This is the modified encoder network that extends it to take in
 2 camera observations plus robot state information and then output
-a final embedding in latent space. Also modifying it to be 256x256
-instead of 224x224 which was for the original definition.
+a final embedding in latent space. Also modifying it to be 84x84 to match
+the mimicgen dataset instead of 224x224 which was for the original definition.
 This encoder will now seperately pass through each input image through
 the default encoder and then concatenate them together with the robot state
 embedding and then this concatenated vector will be passed through a fusion MLP
@@ -27,13 +27,13 @@ predictor
 
 class RobotEncoder(nn.Module):
     def __init__(self,
-                 patch : int = 16,
+                 patch : int = 14,
                  nheads : int = 3,
                  nlayers : int = 12,
                  d_model : int = 192,
                  d_state : int = 9,
                  d_state_emb : int = 64,
-                 npatches : int = 256):  # npatches is (H/patch_size)*(W/patch_size)
+                 npatches : int = 36):  # 84x84, patch 14 → 6x6 patches
         super().__init__()
         self.encoder = EncoderNetwork(patch=patch,
                                       nheads=nheads,
@@ -55,7 +55,7 @@ class RobotEncoder(nn.Module):
         )
 
     def forward(self, above, wrist, state):
-        # above : [Batch, Window, 3, 256, 256] | wrist : [Batch, Window, 3, 256, 256] | state : [Batch, Window, 9]
+        # above : [Batch, Window, 3, 84, 84] | wrist : [Batch, Window, 3, 84, 84] | state : [Batch, Window, 9]
         above_emb = self.encoder(above)  # [Batch, Window, 192]
         wrist_emb = self.encoder(wrist)  # [Batch, Window, 192]
         state_emb = self.state_encoder(state) # [Batch, Window, 64]
@@ -65,7 +65,7 @@ class RobotEncoder(nn.Module):
 
 if __name__ == "__main__":
     dummy = RobotEncoder()
-    above = torch.ones(3, 3, 3, 256, 256)
-    wrist = torch.ones(3, 3, 3, 256, 256)
+    above = torch.ones(3, 3, 3, 84, 84)
+    wrist = torch.ones(3, 3, 3, 84, 84)
     state = torch.ones(3, 3, 9)
     print(dummy(above, wrist, state).shape)
