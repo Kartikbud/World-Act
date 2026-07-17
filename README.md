@@ -1,6 +1,6 @@
 # World-Act
 
-**Note:** Human demos have already been collected and expanded with MimicGen. A sped-up preview of the generated data is in [`data_playback.mp4`](data_playback.mp4).
+**Note:** Human demos have already been collected and expanded with MimicGen. A sped-up preview of the generated data is in [`data_playback.mp4`](data_playback.mp4). The full HDF5 dataset is on Google Drive: [demo.hdf5](https://drive.google.com/file/d/19fS1VDBsYhsn97lgNLD-3DZoUsSWmKdB/view?usp=sharing).
 
 ## Dataset collection
 
@@ -59,3 +59,10 @@ cd mimicgen
 pip install -e .
 cd ..
 ```
+
+Note for Markers: This codebase also includes some code I wrote when I was just trying to replicate the results of the pushT experiment in the original leworldmodel paper so there is some extra code. The important files for the actual experiment I am doing for the project are:
+- the files in src/datasets/robot
+- src/train/train_baseline.py and src/train/train_primary
+- all the files in src/architectures
+- src/losses.py
+

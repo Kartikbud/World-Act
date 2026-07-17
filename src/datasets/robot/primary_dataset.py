@@ -48,12 +48,6 @@ class RobotPrimaryDataset(Dataset):
 		mask_key = "valid" if val else "train"
 		self.frame_samples = []
 		with h5py.File(self.h5_path, "r") as f:
-			if "mask" not in f or mask_key not in f["mask"]:
-				raise KeyError(
-					f"Expected mask/{mask_key} in {self.h5_path}. "
-					"Re-run generate_dataset.py (it writes train/valid masks) "
-					"or add the split manually."
-				)
 			episodes = [_decode_demo_name(x) for x in f["mask"][mask_key][:]]
 			episodes = sorted(episodes, key=_demo_number)
 

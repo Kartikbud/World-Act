@@ -1,8 +1,22 @@
+# local env
 myenv
 .python-version
-src/models/__pycache__
+
+# notebooks (Colab copies — not for repo)
+notebooks/
+.ipynb_checkpoints/
+
+# training artifacts
+models/
+logs/
+
+# python / OS junk
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# misc local scripts
 src/datasets/scan_corrupt_episodes.py
-models/run1/
 roboverse/roboverse.egg-info/
 roboverse/data/
 
