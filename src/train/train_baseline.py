@@ -1,9 +1,9 @@
 import argparse
-import contextlib
 import sys
 from pathlib import Path
 
 import torch
+import yaml
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -15,6 +15,12 @@ if str(SRC_DIR) not in sys.path:
 
 from architectures.baseline import BaselinePolicy
 from datasets.robot.baseline_dataset import RobotBaselineDataset
+from utils import amp_dtype_label, autocast_context
+
+
+def load_config(config_path: Path) -> dict:
+	with open(config_path) as f:
+		return yaml.safe_load(f)
 
 
 def baseline_loss(pred, target, gripper_coeff: float):
@@ -38,7 +44,8 @@ def train(device,
 		  persistent_workers: bool,
 		  pin_memory: bool,
 		  optimizer_betas: tuple[float, float],
-		  optimizer_weight_decay: float):
+		  optimizer_weight_decay: float,
+		  amp_dtype: str):
 
 	torch.manual_seed(seed)
 	if isinstance(device, str):
@@ -69,7 +76,9 @@ def train(device,
 
 	policy = BaselinePolicy().to(device)
 	n_params = sum(p.numel() for p in policy.parameters())
-	print(f"BaselinePolicy on {device} | params={n_params:,} ({n_params/1e6:.2f}M)")
+	gpu_name = torch.cuda.get_device_name(0) if on_cuda else "cpu"
+	print(f"BaselinePolicy on {device} ({gpu_name}) | params={n_params:,} ({n_params/1e6:.2f}M)")
+	print(f"AMP: {amp_dtype_label(amp_dtype, device)} (config amp_dtype={amp_dtype})")
 	print(f"train samples={len(train_dataset)} | val samples={len(val_dataset)}")
 
 	optimizer = torch.optim.AdamW(
@@ -80,11 +89,7 @@ def train(device,
 	)
 
 	writer = SummaryWriter(log_dir=log_dir)
-	autocast_ctx = (
-		torch.amp.autocast("cuda", dtype=torch.bfloat16)
-		if on_cuda
-		else contextlib.nullcontext()
-	)
+	autocast_ctx = autocast_context(device, amp_dtype)
 	non_blocking = on_cuda and pin_memory
 
 	for epoch in tqdm(range(epochs), desc="epochs"):
@@ -161,41 +166,46 @@ if __name__ == "__main__":
 	PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 	parser = argparse.ArgumentParser(description="Train behavioral cloning baseline on robot data")
-	parser.add_argument("--run_name", type=str, default="baseline_run1",
-						help="Subfolder under models/ for checkpoints")
-	parser.add_argument("--data_dir", type=Path, default=PROJECT_DIR / "data")
-	parser.add_argument("--log_dir", type=Path, default=PROJECT_DIR / "logs")
-	parser.add_argument("--save_dir", type=Path, default=PROJECT_DIR / "models")
-	parser.add_argument("--lr", type=float, default=3e-4)
-	parser.add_argument("--seed", type=int, default=42)
-	parser.add_argument("--gripper_coeff", type=float, default=0.1)
-	parser.add_argument("--epochs", type=int, default=10)
-	parser.add_argument("--batch_size", type=int, default=64)
-	parser.add_argument("--num_workers", type=int, default=4)
-	parser.add_argument("--persistent_workers", action="store_true", default=True)
-	parser.add_argument("--no_persistent_workers", action="store_false", dest="persistent_workers")
-	parser.add_argument("--pin_memory", action="store_true", default=True)
-	parser.add_argument("--no_pin_memory", action="store_false", dest="pin_memory")
-	parser.add_argument("--weight_decay", type=float, default=0.05)
+	parser.add_argument(
+		"--config",
+		type=Path,
+		default=PROJECT_DIR / "configs" / "baseline.yaml",
+		help="Path to the training config YAML file.",
+	)
+	parser.add_argument(
+		"--run_name",
+		type=str,
+		required=True,
+		help="Name of the run. Checkpoints save to <save_dir>/<run_name>/.",
+	)
 	args = parser.parse_args()
 
+	config = load_config(args.config)
+
+	paths = config["paths"]
+	training = config["training"]
+	optimizer_cfg = config["optimizer"]
+
+	data_dir = PROJECT_DIR / paths["data_dir"]
+	log_dir = PROJECT_DIR / paths["log_dir"] / args.run_name
+	save_dir = PROJECT_DIR / paths["save_dir"] / args.run_name
+
 	device = "cuda" if torch.cuda.is_available() else "cpu"
-	save_dir = args.save_dir / args.run_name
-	log_dir = args.log_dir / args.run_name
 
 	train(
 		device=device,
-		data_dir=args.data_dir,
+		data_dir=data_dir,
 		log_dir=log_dir,
 		save_dir=save_dir,
-		lr=args.lr,
-		seed=args.seed,
-		gripper_coeff=args.gripper_coeff,
-		epochs=args.epochs,
-		batch_size=args.batch_size,
-		num_workers=args.num_workers,
-		persistent_workers=args.persistent_workers,
-		pin_memory=args.pin_memory,
-		optimizer_betas=(0.9, 0.95),
-		optimizer_weight_decay=args.weight_decay,
+		lr=training["lr"],
+		seed=training["seed"],
+		gripper_coeff=training["gripper_coeff"],
+		epochs=training["epochs"],
+		batch_size=training["batch_size"],
+		num_workers=training["num_workers"],
+		persistent_workers=training["persistent_workers"],
+		pin_memory=training["pin_memory"],
+		optimizer_betas=tuple(optimizer_cfg["betas"]),
+		optimizer_weight_decay=optimizer_cfg["weight_decay"],
+		amp_dtype=training.get("amp_dtype", "auto"),
 	)

@@ -14,17 +14,19 @@ training:
   persistent_workers: true
   pin_memory: true
   window_size: 3
+  # auto: bf16 on Ampere+ (A100, L4, ...), fp16 on older CUDA (T4); or force bf16/fp16/off
+  amp_dtype: auto
 
 model:
   embedding_dim: 192
-  action_dim: 2
+  action_dim: 7
   pred_nheads: 16
   dropout: 0.1
   pred_nlayers: 6
   patch_size: 14
   enc_nheads: 3
   enc_nlayers: 12
-  enc_npatches: 256
+  enc_npatches: 36
 
 loss:
   knots: 17

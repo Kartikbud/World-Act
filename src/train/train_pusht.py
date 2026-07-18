@@ -1,5 +1,4 @@
 import argparse
-import contextlib
 import os
 import sys
 import zipfile
@@ -20,6 +19,7 @@ from architectures.encoder import EncoderNetwork
 from architectures.predictor import PredictorNetwork
 from datasets.pusht_dataset import PushTDataset
 from losses import SIGReg
+from utils import amp_dtype_label, autocast_context
 
 
 def load_config(config_path: Path) -> dict:
@@ -53,7 +53,8 @@ def train(device,
           knots: int,
           num_proj: int,
           optimizer_betas: tuple[float, float],
-          optimizer_weight_decay: float):
+          optimizer_weight_decay: float,
+          amp_dtype: str):
 
     torch.manual_seed(seed)
     if isinstance(device, str):
@@ -106,7 +107,9 @@ def train(device,
                              d_model=embedding_dim,
                              npatches=enc_npatches).to(device)
 
-    print(f"networks are on device: {device}")
+    gpu_name = torch.cuda.get_device_name(0) if on_cuda else "cpu"
+    print(f"networks are on device: {device} ({gpu_name})")
+    print(f"AMP: {amp_dtype_label(amp_dtype, device)} (config amp_dtype={amp_dtype})")
 
     # defining the losses and the optimizer
     sig_reg = SIGReg(knots=knots,
@@ -126,11 +129,7 @@ def train(device,
     results = {"train_loss": [],
                "val_loss": []}
 
-    autocast_ctx = (
-        torch.amp.autocast("cuda", dtype=torch.bfloat16)
-        if on_cuda
-        else contextlib.nullcontext()
-    )
+    autocast_ctx = autocast_context(device, amp_dtype)
     non_blocking = on_cuda and pin_memory
 
     # training loop
@@ -227,7 +226,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=Path,
-        default=PROJECT_DIR / "configs" / "default.yaml",
+        default=PROJECT_DIR / "configs" / "default_pusht.yaml",
         help="Path to the training config YAML file.",
     )
     parser.add_argument(
@@ -280,4 +279,5 @@ if __name__ == "__main__":
         num_proj=loss["num_proj"],
         optimizer_betas=tuple(optimizer_cfg["betas"]),
         optimizer_weight_decay=optimizer_cfg["weight_decay"],
+        amp_dtype=training.get("amp_dtype", "auto"),
     )
