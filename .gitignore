@@ -33,3 +33,4 @@ data/robot/raw_demo/**
 !data/robot/raw_demo/.gitkeep
 data/robot/mimicgen/**
 !data/robot/mimicgen/.gitkeep
+data/keyboard_robot

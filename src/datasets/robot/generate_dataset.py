@@ -5,6 +5,10 @@ Defaults:
   source:  data/robot/processed/demo.hdf5
   config:  data/robot/stack_mg_config.json
   output:  data/robot/mimicgen/
+
+Camera visuals: MimicGen renders through robomimic's EnvRobosuite wrapper,
+which applies the collision-geom ctypes fix so generated images use normal
+visual meshes (not the green/blue collision overlay).
 """
 
 import argparse

@@ -26,6 +26,33 @@ python src/datasets/robot/process_demos.py
 python src/datasets/robot/generate_dataset.py 1000
 ```
 
+## SpaceMouse (optional)
+
+Teleop demos in this project were collected with keyboard, but SpaceMouse works too via robosuite.
+
+**Setup (macOS):**
+1. Install the [3Dconnexion driver](https://www.3dconnexion.com/service/drivers.html).
+2. Install HID support: `pip uninstall hid` then `pip install hidapi`.
+3. Close the 3Dconnexion desktop app if it’s open (only one process can claim the device).
+4. Create `robosuite/robosuite/macros_private.py` with your device IDs. This repo’s **SpaceMouse Compact** needs:
+
+```python
+SPACEMOUSE_VENDOR_ID = 9583
+SPACEMOUSE_PRODUCT_ID = 50741
+```
+
+Robosuite’s default `product_id` (`50734`) is for SpaceMouse Wireless — using the wrong ID causes `OSError: open failed`. To discover your IDs:
+
+```bash
+python -c "import hid; [print(d) for d in hid.enumerate() if (d.get('manufacturer_string') or '').startswith('3Dconnexion')]"
+```
+
+**Test teleop:**
+
+```bash
+python robosuite/robosuite/demos/demo_device_control.py --device spacemouse --environment Stack --robots Panda --controller osc
+```
+
 ## Installation
 
 ```bash
@@ -54,12 +81,17 @@ cd robomimic
 CMAKE_POLICY_VERSION_MINIMUM=3.5 pip install -e .
 cd ..
 
+# Required patch: MuJoCo 2.3.2 collision-mesh rendering fix for MimicGen camera obs.
+# Replace robomimic's env wrapper with the patched copy from extra/:
+cp extra/env_robosuite.py robomimic/robomimic/envs/env_robosuite.py
+
 # mimicgen
 cd mimicgen
 pip install -e .
 cd ..
 ```
 
+Without that `cp`, MimicGen-generated images can show green/blue collision meshes instead of normal visual meshes.
 Note for Markers: This codebase also includes some code I wrote when I was just trying to replicate the results of the pushT experiment in the original leworldmodel paper so there is some extra code. The important files for the actual experiment I am doing for the project are:
 - the files in src/datasets/robot
 - src/train/train_baseline.py and src/train/train_primary
